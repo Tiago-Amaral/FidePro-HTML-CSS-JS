@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home - FidePro</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" href="./icons/five.png">
+  <link rel="icon" href="./icons/five.png" />
+  <meta name="theme-color" content="#004c5c" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body class="home-body">
+  <link rel="manifest" href="manifest.json" />
+  <body class="home-body">
+   
+  <div class="home-container">
+    <!-- Logo e Nome -->
+    <div class="app-header">
+      <img src="../icons/logo.png" alt="Logo do App" class="app-logo" />
+      <h1 class="app-name"></h1>
+    </div>
+
+    <!-- Ações -->
+    <div class="home-buttons">
+      <a href="form.html" class="home-btn">Cadastrar Cliente</a>
+      <a href="clientes.html" class="home-btn">Lista de Clientes</a>
+      <a href="graficos.html" class="home-btn">Gráficos</a>
+      <a href="notificacao.html" class="home-btn">Notificações</a>
+    </div>
+  </div>
+
+  <!-- Ícone de Logout no Canto Superior Direito -->
+  <div class="logout-icon">
+    <i class="fas fa-sign-out-alt" onclick="logout()" title="Sair"></i>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    // Função de Logout 
+    function logout() {
+      firebase.auth().signOut()
+        .then(() => {
+          // Redireciona para a página de login
+          window.location.href = "../index.html";
+        })
+        .catch((error) => {
+          console.error("Erro ao fazer logout:", error);
+        });
+    }
+
+    // Verifica se o usuário está autenticado
+    firebase.auth().onAuthStateChanged((user) => {
+      if (!user) {
+        // Se não estiver logado, redireciona para login
+        window.location.href = "../index.html";
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log('Service Worker registrado ✅'))
+        .catch(err => console.error('Erro ao registrar o Service Worker', err));
+    }
+  </script>
+
+</body>
+
+</html>

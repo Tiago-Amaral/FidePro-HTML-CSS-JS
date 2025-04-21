@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8" />
+  <title>Cadastro</title>
+  
+  <link rel="stylesheet" href="../style.css">
+  <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+<!-- Firebase config -->
+<script src="../pages/firebase-config.js" defer></script>
+
+<!-- Seu script com a função de cadastro -->
+<script src="cadastro.js" defer></script>
+
+  
+</head>
+<body>
+  <div id="mensagemStatus" class="mensagem-status"></div>
+  <main class="auth-page">
+    <section class="form-container" id="login-form">
+      <h2 class="form-title">Cadastro</h2>
+
+      <div class="form-group">
+        <label for="cadastroEmail" class="form-label">Email</label>
+        <input type="email" id="cadastroEmail" class="form-input" placeholder="Digite seu email" />
+      </div>
+  
+      <div class="form-group">
+        <label for="cadastroSenha" class="form-label">Senha</label>
+        <input type="password" id="cadastroSenha" class="form-input" placeholder="Digite sua senha" />
+      </div>
+  
+      <button class="form-button" onclick="fazerCadastro()">Cadastrar</button>
+  
+      <div class="form-links">
+        <p>Já tem conta? <a href="../index.html" class="link">Entrar</a></p>
+      </div>
+    </section>
+  </main>
+  
+    
+  
+</body>
+</html>

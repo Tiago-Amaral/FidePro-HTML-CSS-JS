@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notificações</title>
+
+  <
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script> 
+
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>Notificações</h1>
+
+    <h2>Aniversariantes de hoje</h2>
+    <ul id="aniversariantes"></ul>
+
+    <h2>Clientes com Potencial de Recompra</h2>
+    <ul id="clientesRecompra"></ul>
+  </div>
+
+  <div class="mobile-menu">
+    <a href="home.html" class="menu-item"><i class="fas fa-home"></i></a>
+    <a href="form.html" class="menu-item"><i class="fas fa-user-plus"></i></a>
+    <a href="clientes.html" class="menu-item"><i class="fas fa-users"></i></a>
+    <a href="graficos.html" class="menu-item"><i class="fas fa-chart-bar"></i></a>
+  </div>
+
+  <script>
+    const db = firebase.firestore();
+
+    const aniversariantesList = document.getElementById("aniversariantes");
+    const clientesRecompraList = document.getElementById("clientesRecompra");
+
+    function calcularDiferencaDias(data1, data2) {
+      const diffTime = new Date(data1) - new Date(data2);
+      return diffTime / (1000 * 3600 * 24);
+    }
+
+    function adicionarDias(data, dias) {
+      let dt;
+      if (data instanceof firebase.firestore.Timestamp) {
+        dt = data.toDate();
+      } else {
+        dt = new Date(data);
+      }
+      dt.setDate(dt.getDate() + parseInt(dias));
+      return dt.toISOString().split("T")[0];
+    }
+
+    function exibirListas(aniversariantes, recompra) {
+      aniversariantesList.innerHTML = "";
+      clientesRecompraList.innerHTML = "";
+
+      aniversariantes.forEach(nome => {
+        const li = document.createElement("li");
+        li.textContent = nome;
+        aniversariantesList.appendChild(li);
+      });
+
+      recompra.forEach(nome => {
+        const li = document.createElement("li");
+        li.textContent = nome;
+        clientesRecompraList.appendChild(li);
+      });
+    }
+
+    async function carregarClientes() {
+      try {
+        const snapshot = await db.collection("clientes").get();
+
+        const aniversariantes = [];
+        const recompra = [];
+
+        const hoje = new Date();
+        const hojeString = hoje.toISOString().split("T")[0];
+
+        snapshot.forEach(doc => {
+          const cliente = doc.data();
+
+          // Verifica aniversário
+          if (cliente.nascimento) {
+            let dia, mes;
+            if (cliente.nascimento instanceof firebase.firestore.Timestamp) {
+              const nascimento = cliente.nascimento.toDate();
+              dia = nascimento.getDate();
+              mes = nascimento.getMonth() + 1;
+            } else {
+              const [ano, m, d] = cliente.nascimento.split("-");
+              dia = parseInt(d);
+              mes = parseInt(m);
+            }
+
+            if (dia === hoje.getDate() && mes === (hoje.getMonth() + 1)) {
+              aniversariantes.push(cliente.nome);
+            }
+          }
+
+          // Verifica recompra
+          if (cliente.compras && cliente.compras.length > 0) {
+            const ultimaCompra = cliente.compras[cliente.compras.length - 1];
+            if (ultimaCompra && ultimaCompra.data && ultimaCompra.duracao) {
+              const dataRecompra = adicionarDias(ultimaCompra.data, ultimaCompra.duracao);
+              const diasRestantes = calcularDiferencaDias(dataRecompra, hojeString);
+
+              if (diasRestantes >= 0 && diasRestantes <= 3) {
+                recompra.push(cliente.nome);
+              }
+            }
+          }
+        });
+
+        // Armazena no localStorage
+        localStorage.setItem("aniversariantesHoje", JSON.stringify(aniversariantes));
+        localStorage.setItem("clientesRecompra", JSON.stringify(recompra));
+
+        // Exibe na tela
+        exibirListas(aniversariantes, recompra);
+      } catch (error) {
+        console.error("Erro ao buscar clientes:", error);
+      }
+    }
+
+    // Carrega dados do cache primeiro
+    const cacheAniversariantes = JSON.parse(localStorage.getItem("aniversariantesHoje")) || [];
+    const cacheRecompra = JSON.parse(localStorage.getItem("clientesRecompra")) || [];
+    exibirListas(cacheAniversariantes, cacheRecompra);
+
+    // Busca dados atualizados do Firestore
+    carregarClientes();
+  </script>
+</body>
+</html>

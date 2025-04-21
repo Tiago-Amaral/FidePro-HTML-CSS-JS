@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperar Senha</title>
+  <link rel="stylesheet" href="../style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="../pages/firebase-config.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="rec.js" defer></script>
+</head>
+<body>
+  <!-- Mensagem de feedback -->
+  <div id="mensagemStatus" class="mensagem-status"></div>
+
+  <div class="auth-page">
+    <h2 class="form-title">Recuperar Senha</h2>
+    <div class="form-group">
+      <label for="recuperarEmail" class="form-label">Email</label>
+      <input type="email" id="recuperarEmail" class="form-input" placeholder="Digite seu email" />
+    </div>
+    <button onclick="recuperarSenha()" class="form-button">Enviar recuperação</button>
+    
+    <div class="form-links">
+      <p><a href="../index.html" class="link">Voltar</a></p>
+    </div>
+  </div>
+</body>
+</html>

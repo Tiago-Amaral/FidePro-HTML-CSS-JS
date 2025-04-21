@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - MeuApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="../icons/five.png">
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#004c5c" />
+  
+  <!-- Estilos -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../login/recuperar.css" />
+</head>
+
+<body>
+  <!-- Banner PWA -->
+  <div id="installBanner" class="mensagem-status sucesso" style="display: none;">
+    Deseja instalar o app? <button id="btnInstall">Instalar</button>
+  </div>
+
+  <!-- Tela de splash -->
+  <div id="splash-screen" class="splash-screen">
+    <img src="../icons/logo.png" alt="Logo do app" class="splash-logo">
+    <h1 class="splash-title"></h1>
+  </div>
+
+  <!-- Mensagens de status -->
+  <div id="mensagemStatus" class="mensagem-status"></div>
+
+  <main class="auth-page">
+    <section class="form-container" id="login-form">
+      <h2 class="form-title">Login</h2>
+
+      <div class="form-group">
+        <label for="loginEmail" class="form-label">Email</label>
+        <input type="email" id="loginEmail" class="form-input" placeholder="Digite seu email" required />
+      </div>
+
+      <div class="form-group">
+        <label for="loginSenha" class="form-label">Senha</label>
+        <input type="password" id="loginSenha" class="form-input" placeholder="Digite sua senha" required />
+      </div>
+
+      <button id="loginBtn" class="form-button" onclick="fazerLogin()">Entrar</button>
+
+      <div class="form-links">
+        <p><a href="../login/recuperar.html" class="link">Esqueceu a senha?</a></p>
+        <p>Não tem conta? <a href="../login/cadast.html" class="link">Cadastre-se</a></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase e scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="../pages/firebase-config.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="login.js" defer></script>
+
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log('Service Worker registrado ✅'))
+        .catch(err => console.error('Erro ao registrar o Service Worker', err));
+    }
+
+    // PWA para instalar
+    let deferredPrompt;
+    const installBanner = document.getElementById('installBanner');
+    const btnInstall = document.getElementById('btnInstall');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+
+      if (!window.matchMedia('(display-mode: standalone)').matches &&
+          !localStorage.getItem('pwaInstalled')) {
+        installBanner.style.display = 'block';
+      }
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+
+        if (outcome === 'accepted') {
+          console.log('Usuário aceitou instalar');
+          localStorage.setItem('pwaInstalled', 'true');
+        } else {
+          console.log('Usuário recusou instalar');
+        }
+
+        installBanner.style.display = 'none';
+        deferredPrompt = null;
+      }
+    });
+
+    window.addEventListener("load", () => {
+  const splash = document.getElementById("splash-screen");
+  if (splash) splash.style.display = "none";
+});
+
+  </script>
+</body>
+</html>
