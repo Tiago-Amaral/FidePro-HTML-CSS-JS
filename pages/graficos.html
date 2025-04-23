@@ -3,18 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gráfico de Produtos</title>
+  <title>Análise de Produtos</title>
   <link rel="stylesheet" href="../style.css" />
   <script src="../script.js" defer></script>
-  <script src="./firebase-config.js" defer></script> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="./firebase-config.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <h1 id="h1-grafico">Produtos Mais Vendidos 😍 <br> Produtos Menos Vendidos 😟</h1>
+    <h1 id="h1-grafico">Análise de Vendas de Produtos</h1>
     <div class="grafico-container">
       <canvas id="graficoProdutos"></canvas>
+    </div>
+    <div class="comentarios-container">
+      <h2>Comentários Automáticos:</h2>
+      <ul id="comentarios-lista"></ul>
     </div>
   </div>
 
@@ -28,55 +32,53 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-   
-  
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-  
+
     async function gerarGraficoProdutos() {
       const contagemProdutos = {};
-  
+
       try {
         const snapshot = await getDocs(collection(db, "clientes"));
         snapshot.forEach(doc => {
           const cliente = doc.data();
           const compras = cliente.compras || [];
-  
+
           compras.forEach(compra => {
             const produto = compra.produto?.trim();
             const quantidade = parseInt(compra.quantidade) || 1;
-  
+
             if (produto) {
               contagemProdutos[produto] = (contagemProdutos[produto] || 0) + quantidade;
             }
           });
         });
-  
+
         const produtos = Object.keys(contagemProdutos);
         const quantidades = Object.values(contagemProdutos);
-  
         if (produtos.length === 0) {
           alert("Nenhum dado de produto encontrado.");
           return;
         }
-  
+
         const max = Math.max(...quantidades);
         const min = Math.min(...quantidades);
-  
+
         const labelsDestacados = produtos.map(produto => {
           const qtd = contagemProdutos[produto];
-          if (qtd === max) return `😍 ${produto}`;
-          if (qtd === min) return `😟 ${produto}`;
+          if (qtd === max) return `\ud83d\ude0d ${produto}`;
+          if (qtd === min) return `\ud83d\ude1f ${produto}`;
           return produto;
         });
-  
+
         const backgroundColors = produtos.map(produto => {
           const qtd = contagemProdutos[produto];
           if (qtd === max) return "#28a745";
           if (qtd === min) return "#dc3545";
           return "#4e73df";
         });
-  
+
         const ctx = document.getElementById("graficoProdutos").getContext("2d");
         new Chart(ctx, {
           type: "bar",
@@ -116,15 +118,35 @@
             }
           }
         });
-  
+
+        gerarComentarios(contagemProdutos);
+
       } catch (error) {
         console.error("Erro ao carregar dados do Firestore:", error);
         alert("Erro ao carregar dados do gráfico.");
       }
     }
-  
+
+    function gerarComentarios(produtos) {
+      const comentariosLista = document.getElementById("comentarios-lista");
+      comentariosLista.innerHTML = "";
+
+      const produtosOrdenados = Object.entries(produtos).sort((a, b) => b[1] - a[1]);
+
+      produtosOrdenados.slice(0, 3).forEach(([produto, qtd]) => {
+        const li = document.createElement("li");
+        li.textContent = `O produto "${produto}" teve destaque com ${qtd} unidades vendidas.`;
+        comentariosLista.appendChild(li);
+      });
+
+      produtosOrdenados.slice(-3).forEach(([produto, qtd]) => {
+        const li = document.createElement("li");
+        li.textContent = `O produto "${produto}" teve baixa performance com apenas ${qtd} unidades vendidas.`;
+        comentariosLista.appendChild(li);
+      });
+    }
+
     gerarGraficoProdutos();
   </script>
-  
 </body>
 </html>
