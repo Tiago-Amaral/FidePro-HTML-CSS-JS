@@ -3,164 +3,239 @@
 
 <head>
   <meta charset="UTF-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clientes Cadastrados</title>
   <link rel="stylesheet" href="../style.css" />
   <script src="../script.js" defer></script>
-  <script src="./firebase-config.js" defer></script> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="./firebase-config.js" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-  <body>
-    <div class="container">
-      <h1>Clientes Cadastrados</h1>
-  
-      <!-- Alerta de notificações -->
-      <div id="alertaNotificacao" class="alerta" style="display: none;">
-        <i class="fas fa-bell" id="iconeNotificacao">
-          <div class="bolinha-notificacao"></div>
-        </i>
-        <p>Você tem notificações! <a href="notificacao.html">Ver notificações</a></p>
-      </div>
-  
-      <!-- Barra de pesquisa -->
-      <input type="text" id="pesquisaCliente" placeholder="Pesquisar cliente por nome..."
-        style="margin: 15px 0; padding: 8px; width: 100%; max-width: 400px;" />
-      <button onclick="filtrarClientes()">Filtrar</button>
-  
-      <!-- Lista -->
-      <ul id="listaClientes"></ul>
-    </div>
-  
-    <!-- Menu inferior -->
-    <div class="mobile-menu">
-      <a href="home.html" class="menu-item"><i class="fas fa-home"></i></a>
-      <a href="form.html" class="menu-item"><i class="fas fa-user-plus"></i></a>
-      <a href="clientes.html" class="menu-item"><i class="fas fa-users"></i></a>
-      <a href="graficos.html" class="menu-item"><i class="fas fa-chart-bar"></i></a>
-    </div>
-  
-  <!-- Incluindo o Firebase (com tipo módulo) -->
- 
-  
- 
 
+<body>
+  <div class="container">
+    <h1>Clientes Cadastrados</h1>
 
+    <div id="alertaNotificacao" class="alerta" style="display: none;">
+      <i class="fas fa-bell" id="iconeNotificacao">
+        <div class="bolinha-notificacao"></div>
+      </i>
+      <p>Você tem notificações! <a href="notificacao.html">Ver notificações</a></p>
+    </div>
+
+    <input type="text" id="pesquisaCliente" placeholder="Pesquisar cliente por nome..." style="margin: 15px 0; padding: 8px; width: 100%; max-width: 400px;" />
+    <button onclick="filtrarClientes()">Filtrar</button>
+
+    <ul id="listaClientes"></ul>
+  </div>
+
+  <div class="mobile-menu">
+    <a href="home.html" class="menu-item"><i class="fas fa-home"></i></a>
+    <a href="form.html" class="menu-item"><i class="fas fa-user-plus"></i></a>
+    <a href="clientes.html" class="menu-item"><i class="fas fa-users"></i></a>
+    <a href="graficos.html" class="menu-item"><i class="fas fa-chart-bar"></i></a>
+  </div>
+
+  <!-- Modal de Recompra -->
+<div id="modalRecompra" class="modal" style="display: none;" >
+  <div style="background:white; padding:20px; border-radius:10px; max-width:400px; width:100%;">
+    <h2>Registrar Recompra</h2>
+    <form id="formRecompra">
+      <label>Produto:</label><br>
+      <input type="text" id="recompraProduto" required><br><br>
+      <label>Categoria:</label><br>
+      <input type="text" id="recompraCategoria" required><br><br>
+      <label>Quantidade:</label><br>
+      <input type="number" id="recompraQuantidade" required><br><br>
+      <label>Preço (R$):</label><br>
+      <input type="number" id="recompraPreco" step="0.01" required><br><br>
+      <label>Duração estimada (dias):</label><br>
+      <input type="number" id="recompraDuracao" required><br><br>
+
+      <button class="btn-recompra" type="submit">Salvar</button>
+      <button type="button" onclick="fecharModalRecompra()">Cancelar</button>
+    </form>
+  </div>
+</div>
 
 </body>
-<script type="module">
-  
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
-  import { getFirestore, collection, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
+    import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, arrayUnion } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
-  // Inicializa o Firebase com a configuração
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-  // O resto do código
-  const lista = document.getElementById("listaClientes");
-  const inputPesquisa = document.getElementById("pesquisaCliente");
-  const alertaNotificacao = document.getElementById("alertaNotificacao");
+    const lista = document.getElementById("listaClientes");
+    const inputPesquisa = document.getElementById("pesquisaCliente");
+    const alertaNotificacao = document.getElementById("alertaNotificacao");
 
-  let todosClientes = [];
+    let todosClientes = [];
 
-  function formatarData(dataISO) {
-    if (!dataISO) return "—";
-    const [ano, mes, dia] = dataISO.split("-");
-    return `${dia}/${mes}/${ano}`;
-  }
-
-  function adicionarDias(data, dias) {
-    const dt = new Date(data);
-    dt.setDate(dt.getDate() + parseInt(dias));
-    return dt.toISOString().split("T")[0];
-  }
-
-  function calcularDiferencaDias(data1, data2) {
-    const d1 = new Date(data1);
-    const d2 = new Date(data2);
-    const diffTime = d1 - d2;
-    return Math.ceil(diffTime / (1000 * 3600 * 24));
-  }
-
-  async function carregarClientes() {
-    lista.innerHTML = "";
-    const hoje = new Date();
-
-    const snapshot = await getDocs(collection(db, "clientes"));
-    todosClientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    const aniversariantes = todosClientes.filter(cliente => {
-      if (!cliente.nascimento) return false;
-      const [ano, mes, dia] = cliente.nascimento.split("-");
-      return parseInt(dia) === hoje.getDate() && parseInt(mes) === hoje.getMonth() + 1;
-    });
-
-    const clientesRecompra = todosClientes.filter(cliente => {
-      const ultimaCompra = cliente.compras?.at(-1);
-      if (!ultimaCompra) return false;
-      const dataRecompraStr = adicionarDias(ultimaCompra.data, ultimaCompra.duracao);
-      const dataRecompra = new Date(dataRecompraStr);
-      const diff = calcularDiferencaDias(dataRecompra, hoje);
-      return diff >= 0 && diff <= 3;
-    });
-
-    if (aniversariantes.length > 0 || clientesRecompra.length > 0) {
-      alertaNotificacao.style.display = "block";
-      alertaNotificacao.classList.add("notificacao-ativa");
+    function formatarData(dataISO) {
+      if (!dataISO) return "—";
+      const [ano, mes, dia] = dataISO.split("-");
+      return `${dia}/${mes}/${ano}`;
     }
 
-    renderizarLista(todosClientes);
+    function adicionarDias(data, dias) {
+      const dt = new Date(data);
+      dt.setDate(dt.getDate() + parseInt(dias));
+      return dt.toISOString().split("T")[0];
+    }
+
+    function calcularDiferencaDias(data1, data2) {
+      const d1 = new Date(data1);
+      const d2 = new Date(data2);
+      const diffTime = d1 - d2;
+      return Math.ceil(diffTime / (1000 * 3600 * 24));
+    }
+    const params = new URLSearchParams(window.location.search);
+const idCliente = params.get("id");
+
+if (idCliente) {
+  // Carrega os dados do cliente do Firestore
+  const docRef = doc(db, "clientes", idCliente);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const cliente = docSnap.data();
+
+    // Preenche os campos do formulário com os dados do cliente
+    document.getElementById("nome").value = cliente.nome || "";
+    document.getElementById("email").value = cliente.email || "";
+    document.getElementById("telefone").value = cliente.telefone || "";
+    document.getElementById("cidade").value = cliente.cidade || "";
+    document.getElementById("nascimento").value = cliente.nascimento || "";
+
+    // ...continue preenchendo os demais campos, se houver
+  }
+}
+
+    async function carregarClientes() {
+      lista.innerHTML = "";
+      const hoje = new Date();
+
+      const snapshot = await getDocs(collection(db, "clientes"));
+      todosClientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const aniversariantes = todosClientes.filter(cliente => {
+        if (!cliente.nascimento) return false;
+        const [ano, mes, dia] = cliente.nascimento.split("-");
+        return parseInt(dia) === hoje.getDate() && parseInt(mes) === hoje.getMonth() + 1;
+      });
+
+      const clientesRecompra = todosClientes.filter(cliente => {
+        const ultimaCompra = cliente.compras?.at(-1);
+        if (!ultimaCompra) return false;
+        const dataRecompraStr = adicionarDias(ultimaCompra.data, ultimaCompra.duracao);
+        const dataRecompra = new Date(dataRecompraStr);
+        const diff = calcularDiferencaDias(dataRecompra, hoje);
+        return diff >= 0 && diff <= 3;
+      });
+
+      if (aniversariantes.length > 0 || clientesRecompra.length > 0) {
+        alertaNotificacao.style.display = "block";
+        alertaNotificacao.classList.add("notificacao-ativa");
+      }
+
+      renderizarLista(todosClientes);
+    }
+
+    function renderizarLista(clientes) {
+      lista.innerHTML = "";
+
+      clientes.forEach(cliente => {
+        const ultimaCompra = cliente.compras?.at(-1) || {};
+        const proximoContato = ultimaCompra.data ? adicionarDias(ultimaCompra.data, ultimaCompra.duracao) : "—";
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${cliente.nome}</strong><br>
+          Email: ${cliente.email || "—"}<br>
+          WhatsApp: ${cliente.telefone}<br>
+          Cidade: ${cliente.cidade || "—"}<br>
+          Nasc: ${formatarData(cliente.nascimento)}<br><br>
+
+          <strong>Última compra:</strong><br>
+          Produto: ${ultimaCompra.produto || "—"}<br>
+          Categoria: ${ultimaCompra.categoria || "—"}<br>
+          Quantidade: ${ultimaCompra.quantidade || 0}<br>
+          Valor total: R$ ${(ultimaCompra.quantidade * ultimaCompra.preco).toFixed(2)}<br>
+          Data da compra: ${formatarData(ultimaCompra.data)}<br>
+          Duração estimada: ${ultimaCompra.duracao || "—"} dias<br>
+          <strong>Próximo contato sugerido:</strong> ${formatarData(proximoContato)}<br><br>
+
+       
+          <button onclick="removerCliente('${cliente.id}')">Remover</button>
+          <button onclick="registrarRecompra('${cliente.id}')">Registrar Recompra</button>
+        `;
+        lista.appendChild(li);
+      });
+    }
+   // button onclick="editarCliente('${cliente.id}')">Editar</button>
+    window.filtrarClientes = function () {
+      const termo = inputPesquisa.value.trim().toLowerCase();
+      const filtrados = todosClientes.filter(cliente =>
+        cliente.nome.toLowerCase().includes(termo)
+      );
+      renderizarLista(filtrados);
+    }
+
+    window.editarCliente = function (id) {
+  window.location.href = `form.html?id=${id}`;
+}
+
+
+    window.removerCliente = async function (id) {
+      await deleteDoc(doc(db, "clientes", id));
+      await carregarClientes();
+    }
+
+    let clienteSelecionadoRecompra = null;
+
+window.registrarRecompra = function (id) {
+  clienteSelecionadoRecompra = id;
+  document.getElementById("modalRecompra").style.display = "flex";
+};
+
+window.fecharModalRecompra = function () {
+  document.getElementById("modalRecompra").style.display = "none";
+  clienteSelecionadoRecompra = null;
+  document.getElementById("formRecompra").reset();
+};
+
+document.getElementById("formRecompra").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const produto = document.getElementById("recompraProduto").value.trim();
+  const categoria = document.getElementById("recompraCategoria").value.trim();
+  const quantidade = parseInt(document.getElementById("recompraQuantidade").value);
+  const preco = parseFloat(document.getElementById("recompraPreco").value);
+  const duracao = parseInt(document.getElementById("recompraDuracao").value);
+  const data = new Date().toISOString().split("T")[0];
+
+  if (!produto || !categoria || isNaN(quantidade) || isNaN(preco) || isNaN(duracao)) {
+    alert("Preencha todos os campos corretamente.");
+    return;
   }
 
-  function renderizarLista(clientes) {
-    lista.innerHTML = "";
+  const novaCompra = { produto, categoria, quantidade, preco, duracao, data };
 
-    clientes.forEach(cliente => {
-      const ultimaCompra = cliente.compras?.at(-1) || {};
-      const proximoContato = ultimaCompra.data ? adicionarDias(ultimaCompra.data, ultimaCompra.duracao) : "—";
-
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${cliente.nome}</strong><br>
-        Email: ${cliente.email || "—"}<br>
-        WhatsApp: ${cliente.telefone}<br>
-        Cidade: ${cliente.cidade || "—"}<br>
-        Nasc: ${formatarData(cliente.nascimento)}<br><br>
-
-        <strong>Última compra:</strong><br>
-        Produto: ${ultimaCompra.produto || "—"}<br>
-        Categoria: ${ultimaCompra.categoria || "—"}<br>
-        Quantidade: ${ultimaCompra.quantidade || 0}<br>
-        Valor total: R$ ${(ultimaCompra.quantidade * ultimaCompra.preco).toFixed(2)}<br>
-        Data da compra: ${formatarData(ultimaCompra.data)}<br>
-        Duração estimada: ${ultimaCompra.duracao || "—"} dias<br>
-        <strong>Próximo contato sugerido:</strong> ${formatarData(proximoContato)}<br><br>
-
-        <button onclick="editarCliente('${cliente.id}')">Editar</button>
-        <button onclick="removerCliente('${cliente.id}')">Remover</button>
-      `;
-      lista.appendChild(li);
+  try {
+    await updateDoc(doc(db, "clientes", clienteSelecionadoRecompra), {
+      compras: arrayUnion(novaCompra)
     });
-  }
 
-  window.filtrarClientes = function () {
-    const termo = inputPesquisa.value.trim().toLowerCase();
-    const filtrados = todosClientes.filter(cliente =>
-      cliente.nome.toLowerCase().includes(termo)
-    );
-    renderizarLista(filtrados);
-  }
-
-  window.editarCliente = function (id) {
-    localStorage.setItem("clienteEditando", id);
-    window.location.href = "form.html";
-  }
-
-  window.removerCliente = async function (id) {
-    await deleteDoc(doc(db, "clientes", id));
+    fecharModalRecompra();
     await carregarClientes();
+  } catch (error) {
+    console.error("Erro ao registrar recompra:", error);
+    alert("Erro ao registrar recompra.");
   }
+});
 
-  window.onload = carregarClientes;
-</script>
+
+    window.onload = carregarClientes;
+  </script>
+
 </html>

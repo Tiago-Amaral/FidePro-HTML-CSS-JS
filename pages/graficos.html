@@ -29,124 +29,151 @@
     <a href="graficos.html" class="menu-item"><i class="fas fa-chart-bar"></i></a>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+  
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    async function gerarGraficoProdutos() {
-      const contagemProdutos = {};
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-      try {
-        const snapshot = await getDocs(collection(db, "clientes"));
-        snapshot.forEach(doc => {
-          const cliente = doc.data();
-          const compras = cliente.compras || [];
+  async function gerarGraficoProdutos() {
+    const contagemProdutos = {};
+    const nomesOriginais = {};
 
-          compras.forEach(compra => {
-            const produto = compra.produto?.trim();
-            const quantidade = parseInt(compra.quantidade) || 1;
+    try {
+      const snapshot = await getDocs(collection(db, "clientes"));
+      snapshot.forEach(doc => {
+        const cliente = doc.data();
+        const compras = cliente.compras || [];
 
-            if (produto) {
-              contagemProdutos[produto] = (contagemProdutos[produto] || 0) + quantidade;
+        compras.forEach(compra => {
+          const nomeOriginal = compra.produto?.trim();
+          const nomeNormalizado = nomeOriginal?.toLowerCase();
+
+          const quantidade = parseInt(compra.quantidade) || 1;
+
+          if (nomeNormalizado) {
+            contagemProdutos[nomeNormalizado] = (contagemProdutos[nomeNormalizado] || 0) + quantidade;
+
+            if (!nomesOriginais[nomeNormalizado]) {
+              nomesOriginais[nomeNormalizado] = {};
             }
-          });
-        });
-
-        const produtos = Object.keys(contagemProdutos);
-        const quantidades = Object.values(contagemProdutos);
-        if (produtos.length === 0) {
-          alert("Nenhum dado de produto encontrado.");
-          return;
-        }
-
-        const max = Math.max(...quantidades);
-        const min = Math.min(...quantidades);
-
-        const labelsDestacados = produtos.map(produto => {
-          const qtd = contagemProdutos[produto];
-          if (qtd === max) return `\ud83d\ude0d ${produto}`;
-          if (qtd === min) return `\ud83d\ude1f ${produto}`;
-          return produto;
-        });
-
-        const backgroundColors = produtos.map(produto => {
-          const qtd = contagemProdutos[produto];
-          if (qtd === max) return "#28a745";
-          if (qtd === min) return "#dc3545";
-          return "#4e73df";
-        });
-
-        const ctx = document.getElementById("graficoProdutos").getContext("2d");
-        new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: labelsDestacados,
-            datasets: [{
-              label: "Quantidade Vendida",
-              data: quantidades,
-              backgroundColor: backgroundColors,
-              borderRadius: 8,
-            }],
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              title: {
-                display: true,
-                text: 'Ranking de Produtos Vendidos',
-                font: { size: 18 }
-              },
-              tooltip: {
-                callbacks: {
-                  label: context => `Quantidade: ${context.raw} unidades`
-                }
-              }
-            },
-            scales: {
-              x: {
-                ticks: { autoSkip: false, maxRotation: 40, minRotation: 20 },
-                title: { display: true, text: 'Produtos' }
-              },
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: 'Quantidade Vendida' }
-              }
-            }
+            nomesOriginais[nomeNormalizado][nomeOriginal] = (nomesOriginais[nomeNormalizado][nomeOriginal] || 0) + quantidade;
           }
         });
+      });
 
-        gerarComentarios(contagemProdutos);
+      const produtos = Object.keys(contagemProdutos);
+      const quantidades = Object.values(contagemProdutos);
 
-      } catch (error) {
-        console.error("Erro ao carregar dados do Firestore:", error);
-        alert("Erro ao carregar dados do gráfico.");
+      if (produtos.length === 0) {
+        alert("Nenhum dado de produto encontrado.");
+        return;
       }
-    }
 
-    function gerarComentarios(produtos) {
-      const comentariosLista = document.getElementById("comentarios-lista");
-      comentariosLista.innerHTML = "";
+      const nomesFinais = {};
+      for (const chave in nomesOriginais) {
+        const opcoes = nomesOriginais[chave];
+        nomesFinais[chave] = Object.entries(opcoes).sort((a, b) => b[1] - a[1])[0][0];
+      }
 
-      const produtosOrdenados = Object.entries(produtos).sort((a, b) => b[1] - a[1]);
+      const max = Math.max(...quantidades);
+      const min = Math.min(...quantidades);
 
-      produtosOrdenados.slice(0, 3).forEach(([produto, qtd]) => {
-        const li = document.createElement("li");
-        li.textContent = `O produto "${produto}" teve destaque com ${qtd} unidades vendidas.`;
-        comentariosLista.appendChild(li);
+      const labelsDestacados = produtos.map(produto => {
+        const nome = nomesFinais[produto];
+        const qtd = contagemProdutos[produto];
+        if (qtd === max) return `😍 ${nome}`;
+        if (qtd === min) return `😟 ${nome}`;
+        return nome;
       });
 
-      produtosOrdenados.slice(-3).forEach(([produto, qtd]) => {
-        const li = document.createElement("li");
-        li.textContent = `O produto "${produto}" teve baixa performance com apenas ${qtd} unidades vendidas.`;
-        comentariosLista.appendChild(li);
+      const backgroundColors = produtos.map(produto => {
+        const qtd = contagemProdutos[produto];
+        if (qtd === max) return "#28a745";
+        if (qtd === min) return "#dc3545";
+        return "#4e73df";
       });
-    }
 
-    gerarGraficoProdutos();
-  </script>
+      const ctx = document.getElementById("graficoProdutos").getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labelsDestacados,
+          datasets: [{
+            label: "Quantidade Vendida",
+            data: quantidades,
+            backgroundColor: backgroundColors,
+            borderRadius: 8,
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: 'Ranking de Produtos Vendidos',
+              font: { size: 18 }
+            },
+            tooltip: {
+              callbacks: {
+                label: context => `Quantidade: ${context.raw} unidades`
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { autoSkip: false, maxRotation: 40, minRotation: 20 },
+              title: { display: true, text: 'Produtos' }
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Quantidade Vendida' }
+            }
+          }
+        }
+      });
+
+      gerarComentarios(contagemProdutos, nomesFinais);
+
+    } catch (error) {
+      console.error("Erro ao carregar dados do Firestore:", error);
+      alert("Erro ao carregar dados do gráfico.");
+    }
+  }
+
+  function gerarComentarios(produtos, nomesFinais) {
+    const comentariosLista = document.getElementById("comentarios-lista");
+    comentariosLista.innerHTML = "";
+
+    const produtosOrdenados = Object.entries(produtos).sort((a, b) => b[1] - a[1]);
+
+    const topProdutos = produtosOrdenados.slice(0, 3);
+    const nomesTop = topProdutos.map(([produto]) => produto);
+
+    topProdutos.forEach(([produto, qtd]) => {
+      const nome = nomesFinais[produto] || produto;
+      const li = document.createElement("li");
+      li.textContent = `O produto "${nome}" teve destaque com ${qtd} unidades vendidas.`;
+      comentariosLista.appendChild(li);
+    });
+
+    const produtosRestantes = produtosOrdenados.filter(([produto]) => !nomesTop.includes(produto));
+    const bottomProdutos = produtosRestantes.slice(-3);
+
+    bottomProdutos.forEach(([produto, qtd]) => {
+      const nome = nomesFinais[produto] || produto;
+      const li = document.createElement("li");
+      li.textContent = `O produto "${nome}" teve baixa performance com apenas ${qtd} unidades vendidas.`;
+      comentariosLista.appendChild(li);
+    });
+  }
+
+  gerarGraficoProdutos();
+</script>
+
 </body>
 </html>

@@ -32,9 +32,10 @@
       <button type="submit">Cadastrar Cliente</button>
     </form>
 
+    <ul id="listaClientes"></ul>
+
     <hr />
-    
-    <!-- Menu inferior -->
+
     <div class="mobile-menu">
       <a href="home.html" class="menu-item"><i class="fas fa-home"></i></a>
       <a href="form.html" class="menu-item"><i class="fas fa-user-plus"></i></a>
@@ -44,27 +45,21 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
-    // Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Mostrar mensagem igual ao login/cadastro
     function mostrarMensagem(texto, tipo) {
       const div = document.getElementById("mensagemStatus");
       div.textContent = texto;
       div.className = "mensagem-status " + (tipo === "sucesso" ? "sucesso" : "erro");
       div.style.display = "block";
-
-      setTimeout(() => {
-        div.style.display = "none";
-      }, 4000);
+      setTimeout(() => { div.style.display = "none"; }, 4000);
     }
 
     const form = document.getElementById("formCliente");
     const lista = document.getElementById("listaClientes");
-    const alertaNotificacao = document.getElementById("alertaNotificacao");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -75,14 +70,17 @@
         telefone: document.getElementById("telefone").value,
         cidade: document.getElementById("cidade").value,
         nascimento: document.getElementById("nascimento").value,
-        compras: [{
-          produto: document.getElementById("produto").value,
-          categoria: document.getElementById("categoria").value,
-          quantidade: parseInt(document.getElementById("quantidade").value || 0),
-          preco: parseFloat(document.getElementById("preco").value || 0),
-          data: document.getElementById("dataCompra").value,
-          duracao: parseInt(document.getElementById("duracao").value || 0)
-        }]
+        recompras: 0,
+        compras: [
+          {
+            produto: document.getElementById("produto").value,
+            categoria: document.getElementById("categoria").value,
+            quantidade: parseInt(document.getElementById("quantidade").value || 0),
+            preco: parseFloat(document.getElementById("preco").value || 0),
+            data: document.getElementById("dataCompra").value,
+            duracao: parseInt(document.getElementById("duracao").value || 0)
+          }
+        ]
       };
 
       try {
@@ -96,66 +94,30 @@
       }
     });
 
-    async function carregarClientes(filtro = "") {
-      lista.innerHTML = "";
-      const hoje = new Date();
+   
 
-      const snapshot = await getDocs(collection(db, "clientes"));
-      const clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    async function registrarRecompra(id) {
+      const docRef = doc(db, "clientes", id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
 
-      const aniversariantes = clientes.filter(cliente => {
-        if (!cliente.nascimento) return false;
-        const [ano, mes, dia] = cliente.nascimento.split("-");
-        return parseInt(dia) === hoje.getDate() && parseInt(mes) === hoje.getMonth() + 1;
+      const cliente = docSnap.data();
+      const ultimaCompra = cliente.compras.at(-1);
+      const novaCompra = {
+        ...ultimaCompra,
+        data: new Date().toISOString().split("T")[0]
+      };
+
+      const novasCompras = [...cliente.compras, novaCompra];
+      const novasRecompras = (cliente.recompras || 0) + 1;
+
+      await updateDoc(docRef, {
+        compras: novasCompras,
+        recompras: novasRecompras
       });
 
-      const clientesRecompra = clientes.filter(cliente => {
-        const ultimaCompra = cliente.compras?.at(-1);
-        if (!ultimaCompra) return false;
-        const dataRecompraStr = adicionarDias(ultimaCompra.data, ultimaCompra.duracao);
-        const dataRecompra = new Date(dataRecompraStr);
-        const diff = calcularDiferencaDias(dataRecompra, hoje);
-        return diff >= 0 && diff <= 3;
-      });
-
-      if (aniversariantes.length > 0 || clientesRecompra.length > 0) {
-        alertaNotificacao.style.display = "block";
-        alertaNotificacao.classList.add("notificacao-ativa");
-      }
-
-      clientes.forEach((cliente) => {
-        if (cliente.nome.toLowerCase().includes(filtro.toLowerCase())) {
-          const ultimaCompra = cliente.compras?.at(-1);
-          const proximoContato = ultimaCompra ? adicionarDias(ultimaCompra.data, ultimaCompra.duracao) : "—";
-
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <strong>${cliente.nome}</strong><br>
-            Email: ${cliente.email || "—"}<br>
-            WhatsApp: ${cliente.telefone}<br>
-            Cidade: ${cliente.cidade || "—"}<br>
-            Nasc: ${formatarData(cliente.nascimento) || "—"}<br><br>
-
-            <strong>Última compra:</strong><br>
-            Produto: ${ultimaCompra?.produto || "—"}<br>
-            Categoria: ${ultimaCompra?.categoria || "—"}<br>
-            Quantidade: ${ultimaCompra?.quantidade || 0}<br>
-            Valor total: R$ ${(ultimaCompra?.quantidade * ultimaCompra?.preco).toFixed(2)}<br>
-            Data da compra: ${formatarData(ultimaCompra?.data)}<br>
-            Duração estimada: ${ultimaCompra?.duracao || "—"} dias<br>
-            <strong>Próximo contato sugerido:</strong> ${formatarData(proximoContato)}<br><br>
-
-            <button onclick="editarCliente('${cliente.id}')">Editar</button>
-            <button onclick="removerCliente('${cliente.id}')">Remover</button>
-          `;
-          lista.appendChild(li);
-        }
-      });
-    }
-
-    function filtrarClientes() {
-      const termo = document.getElementById("pesquisaCliente").value;
-      carregarClientes(termo);
+      mostrarMensagem("Recompra registrada!", "sucesso");
+      carregarClientes();
     }
 
     function editarCliente(id) {
@@ -172,13 +134,6 @@
       const dt = new Date(data);
       dt.setDate(dt.getDate() + parseInt(dias));
       return dt.toISOString().split("T")[0];
-    }
-
-    function calcularDiferencaDias(data1, data2) {
-      const d1 = new Date(data1);
-      const d2 = new Date(data2);
-      const diffTime = d1 - d2;
-      return Math.ceil(diffTime / (1000 * 3600 * 24));
     }
 
     function formatarData(dataISO) {
